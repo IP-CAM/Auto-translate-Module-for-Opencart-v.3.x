@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>Авто перевод - [DZ]</name>
+    <code>Auto translation - [DZ]</code>
+    <version>1.0</version>
+    <author>[DZ]</author>
+    <link></link>
+
+    <file path="catalog/controller/common/language.php">
+        <operation error="log">
+            <search><![CDATA[return $this->load->view('common/language', $data);]]></search>
+            <add position="before"><![CDATA[
+        //all_languages
+        $data['all_languages'] = json_decode($this->config->get('auto_translate_array_languages'));
+            ]]></add>
+        </operation>
+    </file>
+
+    <file path="catalog/view/theme/default/template/product/category.twig">
+        <operation error="log">
+            <search><![CDATA[<h4><a href="{{ product.href }}">{{ product.name }}</a></h4>]]></search>
+            <add position="replace"><![CDATA[<h4><a href="{{ product.href }}" class="title-translate">{{ product.name }}</a></h4>]]></add>
+        </operation>
+        <operation error="log">
+            <search><![CDATA[<p>{{ product.description }}</p>]]></search>
+            <add position="replace"><![CDATA[<p class="description-translate">{{ product.description }}</p>]]></add>
+        </operation>
+    </file>
+    <file path="catalog/view/theme/default/template/common/language.twig">
+        <operation error="log">
+            <search><![CDATA[{% if languages|length > 1 %}]]></search>
+            <add position="before"><![CDATA[{#]]></add>
+        </operation>
+        <operation error="log">
+            <search index="1"><![CDATA[{% endif %}]]></search>
+            <add position="after"><![CDATA[#}]]></add>
+        </operation>
+        <operation error="log">
+            <search><![CDATA[#}]]></search>
+            <add position="after"><![CDATA[
+{% if all_languages|length > 1 %}
+  <div class="pull-left">
+    <div class="btn-group">
+      <select name="all_languages" id="all_languages" class="btn btn-link">
+        {% for language in all_languages %}
+        <option value="{{ language }}">{{ language }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    $(document).ready(function () {
+      var savedLang = $('#all_languages').val();
+
+      let collection = [];
+
+      $('.caption').each(function () {
+        let title = $(this).find('.title-translate').text();
+        let desc = $(this).find('.description-translate').text();
+
+        collection.push({
+          title: title,
+          description: desc
+        });
+      });
+
+      translate(savedLang, collection);
+
+      $('#all_languages').on('change', function () {
+        var selectedLang = $(this).val();
+        localStorage.setItem('selectedLanguage', selectedLang);
+
+        translate(selectedLang, collection);
+      });
+    });
+
+    function translate(lang, collection) {
+      $.ajax({
+        url: 'index.php?route=common/auto_translate/makeTranslation',
+        type: 'POST',
+        data: {
+          lang: lang,
+          products: collection
+        },
+        dataType: 'json',
+        success: function (response) {
+          //console.log(response);
+
+          if (response && response.translations) {
+            $('.caption').each(function (index) {
+              let translatedTitle = response.translations[index].title;
+              let translatedDesc = response.translations[index].description;
+
+              $(this).find('.title-translate').html(translatedTitle);
+              $(this).find('.description-translate').html(translatedDesc);
+            });
+          } else {
+            console.error('Ошибка перевода или данные отсутствуют');
+          }
+        },
+        error: function () {
+          console.error('Ошибка при запросе перевода');
+        }
+      });
+    }
+  </script>
+{% endif %}
+            ]]></add>
+        </operation>
+    </file>
+</modification>
